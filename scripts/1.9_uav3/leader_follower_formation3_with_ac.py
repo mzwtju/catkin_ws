@@ -11,8 +11,8 @@ KP_z = 1.5
 KP_yaw = 2.8
 max_vel_xy = 1
 max_vel_z = 0.6
-uav_num = int(5)
-leader_id = 4
+uav_num = int(3)
+leader_id = 0
 local_pose = [None]*(uav_num+1)
 relative_pose = [None]*(uav_num+1)
 follower_vel_enu_pub = [None]*(uav_num+1)
@@ -36,19 +36,18 @@ formation.append( [[-1,-1],[0,-1],[1,-1],[-1,0],[0,0],[1,0]] )  #2x3 formation
                                                               #  i i i 
                                                               #  i i i
 '''
-formation.append( [[-1,-1],[0,-1],[1,-1],[-1,0],[0,0]])  #2x3 formation
-                                                              #  i i i i i 
+formation.append( [[0,0],[-2,0],[2,0]])  #2x3 formation
+                                                              #  i i i  
                                                               #  
-formation.append(  [[-2,-2],[0,-2],[2,-2],[-1,-1],[0,0]] )#Trianglar formation[[-2,-2],[0,-2],[2,-2],[-1,-1],[0,0],[1,-1]]
+formation.append(  [[0,0],[-1,-1],[-1,1]] )#Trianglar formation[[-2,-2],[0,-2],[2,-2],[-1,-1],[0,0],[1,-1]]
                                                               #     i
                                                               #    i  i
-                                                              #   i    i
-formation.append( [[0,-4],[0,-2],[0,-6],[-2,0],[0,0]]  )  #'T' formation[[0,-4],[0,-2],[0,-6],[-2,0],[0,0],[2,0]]
-                                                              #    i i i
-                                                              #      i
-                                                              #      i
+                                                              #   
+formation.append( [[0,0],[0,2],[0,-2]]  )  #'T' formation[[0,-4],[0,-2],[0,-6],[-2,0],[0,0],[2,0]]
+                                                              #    i
+                                                              #    i  
+                                                              #    i  
                                                               #    
-formation.append( [[2,0],[-2,0],[-4,0],[-6,0],[0,0]]  )
 formation_id = 0
 
 
@@ -59,7 +58,7 @@ def leader_cmd_vel_callback(msg):
         hover = True
     else:
         hover = False
-
+#与leader相对位置
 def calculate_relative_pose(uav_id):
     global relative_pose
     relative_pose[uav_id].pose.position.x = local_pose[uav_id].pose.position.x - local_pose[leader_id].pose.position.x
@@ -108,6 +107,7 @@ rate = rospy.Rate(100)
 while(1):
     leader_orientation = Quaternion(local_pose[leader_id].pose.orientation.w,local_pose[leader_id].pose.orientation.x,local_pose[leader_id].pose.orientation.y,local_pose[leader_id].pose.orientation.z)
     leader_yaw = leader_orientation.yaw_pitch_roll[0]
+    
     # Avoid collision with other drones 
     '''
     for i in range(uav_num): 
@@ -131,19 +131,21 @@ while(1):
             follower_cmd_vel[uav_id].linear.y = leader_cmd_vel.linear.y+delta_vel(formation[formation_id][i][1],relative_pose[uav_id].pose.position.y, KP_xy, max_vel_xy) 
            # follower_cmd_vel[uav_id].linear.z = leader_cmd_vel.linear.z + delta_vel(leader_height,local_pose[uav_id].pose.position.z, KP_z, max_vel_z) + avoid_vel_z[uav_id] - avoid_vel_z[leader_id]
             follower_cmd_vel[uav_id].linear.z = leader_cmd_vel.linear.z + delta_vel(leader_height,local_pose[uav_id].pose.position.z, KP_z, max_vel_z)
-
+            
             orientation = Quaternion(local_pose[uav_id].pose.orientation.w,local_pose[uav_id].pose.orientation.x,local_pose[uav_id].pose.orientation.y,local_pose[uav_id].pose.orientation.z)
             yaw = orientation.yaw_pitch_roll[0]
-            follower_cmd_vel[uav_id].angular.x = 0.0; follower_cmd_vel[uav_id].angular.y = 0.0; follower_cmd_vel[uav_id].angular.z = KP_yaw*(leader_yaw - yaw)
+            follower_cmd_vel[uav_id].angular.x = 0.0
+            follower_cmd_vel[uav_id].angular.y = 0.0
+            follower_cmd_vel[uav_id].angular.z = KP_yaw*(leader_yaw - yaw)
             
             follower_vel_enu_pub[uav_id].publish(follower_cmd_vel[uav_id])
 
     if hover: 
-        #leader_cmd_vel.linear.z = delta_vel(leader_height,local_pose[leader_id].pose.position.z, KP_z, max_vel_z) + avoid_vel_z[leader_id]
         leader_cmd_vel.linear.z = delta_vel(leader_height,local_pose[leader_id].pose.position.z, KP_z, max_vel_z)
+        #leader_cmd_vel.linear.z = delta_vel(leader_height,local_pose[leader_id].pose.position.z, KP_z, max_vel_z) + avoid_vel_z[leader_id]
     else:
-        #leader_cmd_vel.linear.z = leader_cmd_vel.linear.z + avoid_vel_z[leader_id]
         leader_cmd_vel.linear.z = leader_cmd_vel.linear.z
+        #leader_cmd_vel.linear.z = leader_cmd_vel.linear.z + avoid_vel_z[leader_id]
         if not avoid:
             leader_height = local_pose[leader_id].pose.position.z
     leader_vel_enu_pub.publish(leader_cmd_vel)

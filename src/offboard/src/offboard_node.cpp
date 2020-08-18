@@ -22,13 +22,13 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     /*我们初始化了一个发布者来发布本地的控制指令，还初始化了请求解锁和更改模式的服务。
      请注意，对于您自己的系统，"mavros" 前缀可能不同，因为它将取决于给它的启动文件中的节点指定的名称*/
-    ros::Subscriber state_sub = nh.subscribe<uav0/mavros_msgs::State>
+    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
             ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("mavros/setpoint_position/local", 10);
-    ros::ServiceClient arming_client = nh.serviceClient<uav0/mavros_msgs::CommandBool>
+    ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
-    ros::ServiceClient set_mode_client = nh.serviceClient<uav0/mavros_msgs::SetMode>
+    ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
 
     //the setpoint publishing rate MUST be faster than 2Hz
@@ -41,9 +41,9 @@ int main(int argc, char **argv)
     }
     //尽管PX4飞控在NED坐标系下操控飞机，但MAVROS是在ENU系下进行指令传输的。 这也就是为什么我们设置z为+2
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    pose.pose.position.z = 2;
+    pose.pose.position.x = 2;
+    pose.pose.position.y = 2;
+    pose.pose.position.z = 4;
 
     //send a few setpoints before starting 在切换到offboard模式之前
     //你必须先发送一些期望点信息到飞控中。 不然飞控会拒绝切换到offboard模式。 在这里, 100 可以被选择为任意数量。

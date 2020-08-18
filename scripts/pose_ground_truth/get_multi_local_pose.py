@@ -4,8 +4,7 @@ from geometry_msgs.msg import PoseStamped
 from pyquaternion import Quaternion
 import sys
 import tf
-#uav_num = int(sys.argv[1])
-uav_num = int(6)
+uav_num = int(sys.argv[1])
 def get_odom(id):
     try:
         handle = rospy.ServiceProxy('gazebo/get_model_state',GetModelState)
