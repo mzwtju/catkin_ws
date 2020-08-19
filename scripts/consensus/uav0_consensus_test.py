@@ -29,7 +29,7 @@ class Leader:
         self.path = Path()
         self.global_position = NavSatFix()
         self.cnt = Int16()
-
+        self.cnt.data = 0
         self.arm_state = False
         self.offboard_state = False
         self.flag = 0
@@ -65,6 +65,9 @@ class Leader:
         now = None
         count = 0
         all_ready = 0
+        dx = 0
+        dy = 0
+        T = 2*math.pi/w
         self.uav1_state = Int16()
         self.uav2_state = Int16()
         # self.get_setpoint_pose()
@@ -91,10 +94,17 @@ class Leader:
             if self.local_pose.pose.position.z >=5.4 and self.local_pose.pose.position.z <= 6:
                     self.state.data = 1
                     if all_ready == 1:
-                        vx = -w*r*math.sin(w*self.cnt.data*0.05)
-                        vy = -w*r*math.cos(w*self.cnt.data*0.05) # w r wrong elements
+                        dx = cx -r + r*math.cos(w*self.cnt.data*0.05)
+                        dy = cy - r*math.sin(w*self.cnt.data*0.05)
+                        vx = -(self.local_pose.pose.position.x -dx)
+                        vy = -(self.local_pose.pose.position.y -dy)
+                        # vx = -w*r*math.sin(w*self.cnt.data*0.05)
+                        # vy = -w*r*math.cos(w*self.cnt.data*0.05) # w r wrong elements
                         self.cnt.data = self.cnt.data + 1
                         z = 0
+                    elif all_ready == 0:
+                        vx = 0
+                        vy = 0
             elif self.local_pose.pose.position.z >6:
                 vx = w*r*math.sin(w*self.cnt.data*0.05)
                 vy = w*r*math.cos(w*self.cnt.data*0.05) 
@@ -102,35 +112,36 @@ class Leader:
                 z = 0
             elif self.local_pose.pose.position.z <5:
                 z = 0.5
-                vx = 0
-                vy = 0
+                vx = 1
+                vy = 2
             if self.state_pub.impl is not None:
                 self.state_pub.publish(self.state)
-            if self.uav1_state.data == 1 and self.uav2_state.data == 1 and self.state.data == 1:
+            if self.uav1_state.data == 1 and self.uav2_state.data == 1 and self.state.data == 1 and all_ready == 0:
                 all_ready = 1
+                cx = self.local_pose.pose.position.x
+                cy = self.local_pose.pose.position.y
                 self.uav1_state_sub.unregister()
                 self.uav2_state_sub.unregister()
                 self.state_pub.unregister()
-
-            T = 2*math.pi/w
+                print("circular center point \tx:%.2f y:%.2f"%(cx,cy))
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
             self.timecnt_pub.publish(self.cnt)
-            #     vy = 0
-            # print(time.secs)
             self.get_setpoint_motion(0,0,5.6,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
-                now = rospy.get_rostime()
-                print("local_position\tx:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
+                # now = rospy.get_rostime()
+                print("local_position x:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
                                         self.local_pose.pose.position.y,\
                                         self.local_pose.pose.position.z))
+                print("circular orbit x:%.2f y:%.2f"%(dx,dy))
                 # print("local_attitude\t roll:%.2f pitch:%.2f yaw:%.2f\r"%(self.rpy_pose[2],\
                 #                                                          self.rpy_pose[1],\
                 #                                                          self.rpy_pose[0]))
-                print("velocity_vx %.3f velocity_y %.3f"%(vx,vy))                                                
+                print("velocity_vx %.3f velocity_y %.3f"%(vx,vy))   
+                print("\r")                                             
                 count = 0
-                print(self.state.data,self.uav1_state.data,self.uav2_state.data,all_ready)
+                # print(self.state.data,self.uav1_state.data,self.uav2_state.data,all_ready)
             # print("time: %.8f"%(time.nsecs-now.nsecs)*1e-9)
             # print("time: %.8f"%(time.secs+time.nsecs*1e-9))
 
@@ -173,7 +184,7 @@ class Leader:
 
     def get_setpoint_motion(self,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
-        self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY  \
+        self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY \
                             + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ \
                             + PositionTarget.IGNORE_YAW + PositionTarget.IGNORE_YAW_RATE
         self.setpoint_motion.position.x = x
