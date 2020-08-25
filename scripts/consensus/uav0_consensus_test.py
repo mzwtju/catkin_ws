@@ -33,6 +33,7 @@ class Leader:
         self.arm_state = False
         self.offboard_state = False
         self.flag = 0
+        self.type = 448
         self.flight_mode = None
         self.state = Int16()
         '''
@@ -67,13 +68,16 @@ class Leader:
         all_ready = 0
         dx = 0
         dy = 0
+        x = 0
+        y = 0
+        #type = 448 #ignore AxAyAz
         T = 2*math.pi/w
         self.uav1_state = Int16()
         self.uav2_state = Int16()
         # self.get_setpoint_pose()
         # self.get_setpoint_vel(0,0,0.5)
         # self.get_setpoint_att()
-        self.get_setpoint_motion(0,0,0,0,0,0.1,0,0,0,0)
+        self.get_setpoint_motion(self.type,0,0,0,0,0,0.1,0,0,0,0)
         rate = rospy.Rate(20) # 20hz 0.05s
         for i in range(100):
             self.motion_setpoint_pub.publish(self.setpoint_motion)
@@ -94,6 +98,9 @@ class Leader:
             if self.local_pose.pose.position.z >=5.4 and self.local_pose.pose.position.z <= 6:
                     self.state.data = 1
                     if all_ready == 1:
+                        self.type = 451
+                        x = 0
+                        y = 0
                         dx = cx -r + r*math.cos(w*self.cnt.data*0.05)
                         dy = cy - r*math.sin(w*self.cnt.data*0.05)
                         vx = -(self.local_pose.pose.position.x -dx)
@@ -103,6 +110,8 @@ class Leader:
                         self.cnt.data = self.cnt.data + 1
                         z = 0
                     elif all_ready == 0:
+                        x = 0
+                        y = 0
                         vx = 0
                         vy = 0
             elif self.local_pose.pose.position.z >6:
@@ -112,11 +121,12 @@ class Leader:
                 z = 0
             elif self.local_pose.pose.position.z <5:
                 z = 0.5
-                vx = 1
-                vy = 2
+                vx = 0
+                vy = 0
             if self.state_pub.impl is not None:
                 self.state_pub.publish(self.state)
             if self.uav1_state.data == 1 and self.uav2_state.data == 1 and self.state.data == 1 and all_ready == 0:
+            # if self.state.data == 1 and all_ready == 0:
                 all_ready = 1
                 cx = self.local_pose.pose.position.x
                 cy = self.local_pose.pose.position.y
@@ -127,7 +137,7 @@ class Leader:
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
             self.timecnt_pub.publish(self.cnt)
-            self.get_setpoint_motion(0,0,5.6,vx,vy,0,0,0,0,0,0)
+            self.get_setpoint_motion(self.type,x,y,5.6,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
                 # now = rospy.get_rostime()
@@ -182,11 +192,10 @@ class Leader:
         self.setpoint_att.thrust = 0.6
         self.setpoint_att.type_mask = 7  # ignore body rate
 
-    def get_setpoint_motion(self,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
+    def get_setpoint_motion(self,type = 0,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
-        self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY \
-                            + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ \
-                            + PositionTarget.IGNORE_YAW + PositionTarget.IGNORE_YAW_RATE
+        self.setpoint_motion.type_mask = type
+                            
         self.setpoint_motion.position.x = x
         self.setpoint_motion.position.y = y
         self.setpoint_motion.position.z = z
