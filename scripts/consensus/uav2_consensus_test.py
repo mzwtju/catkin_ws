@@ -20,6 +20,7 @@ KP_z = 0.5
 formation = [[7.5,4.33,0]]
 r = 5
 w = 0.2
+K = 0.
 class Follower:
     def __init__(self):
 
@@ -55,6 +56,9 @@ class Follower:
         self.flight_mode = None
         self.followid = 2
         self.formation_id = 1
+
+        self.uav1_formation_pose = Pose()
+        self.uav1_local_pose = PoseStamped()
         '''
         ros subscribers
         '''
@@ -68,6 +72,8 @@ class Follower:
         self.mavros_sub = rospy.Subscriber('/iris_'+str(self.followid)+'/mavros/state', State, self.mavros_state_callback)
         self.uav0_state_sub =rospy.Subscriber('/iris_0/state', Int16, self.uav0_state_callback)
         self.uav1_state_sub =rospy.Subscriber('/iris_1/state', Int16, self.uav1_state_callback)
+        self.formationPose_sub =rospy.Subscriber('/iris_1/formation_pose', Pose, self.uav1_formation_pose_callback,queue_size=2)
+        self.uav1_local_pose_sub =rospy.Subscriber('/iris_1/mavros/local_position/pose', PoseStamped, self.uav1_local_pose_callback,queue_size=2)
         '''
         ros publishers
         '''
@@ -78,6 +84,7 @@ class Follower:
         self.state_pub = rospy.Publisher('/iris_'+str(self.followid)+'/state', Int16, queue_size=10)
         self.trajectory_pub = rospy.Publisher('/iris_'+str(self.followid)+'/trajectory', Path, queue_size=10)
         self.real_position_pub = rospy.Publisher('/iris_'+str(self.followid)+'/real_position/pose', PoseStamped, queue_size=10)
+        self.formation_position_pub = rospy.Publisher('/iris_2/formation_pose',Pose,queue_size=2)
         '''
         ros services
         '''
@@ -91,6 +98,7 @@ class Follower:
         all_ready = 0
         dx = 0
         dy = 0
+        self.formation_pose = Pose()
         T = 2*math.pi/w
         self.cnt.data = 0
         self.uav0_state = Int16()
@@ -143,8 +151,16 @@ class Follower:
             if all_ready == 1:
                 dx = cx+0.5*r+r*math.cos(w*self.cnt.data*0.05+2*math.pi/3)
                 dy = cy+0.866*r-r*math.sin(w*self.cnt.data*0.05+2*math.pi/3)
-                formation_vel_x = -(self.local_pose.pose.position.x -dx)
-                formation_vel_y = -(self.local_pose.pose.position.y -dy)
+
+                tmp_x = self.local_pose.pose.position.x -dx
+                tmp_y = self.local_pose.pose.position.y -dy
+                tmp2_x = self.uav1_local_pose.pose.position.x-self.uav1_formation_pose.position.x
+                tmp2_y = self.uav1_local_pose.pose.position.y-self.uav1_formation_pose.position.y
+                formation_vel_x = -tmp_x+K*(tmp2_x-tmp_x)
+                formation_vel_y = -tmp_y+K*(tmp2_y-tmp_y)
+                               
+                self.formation_pose.position.x = dx
+                self.formation_pose.position.y = dy
                 self.cnt.data = self.cnt.data + 1
                 # formation_vel_x = -w*r*math.sin(w*self.cnt.data*0.05+2.0*math.pi/3)
                 # formation_vel_y = -w*r*math.cos(w*self.cnt.data*0.05+2.0*math.pi/3)
@@ -165,6 +181,7 @@ class Follower:
             self.get_setpoint_motion(0,0,0,formation_vel_x,formation_vel_y,formation_vel_z+avoid_vel_z,0,0,0,0,0)
             # self.pose_setpoint_pub.publish(self.setpoint_pose)
             # self.att_setpoint_pub.publish(self.setpoint_att)
+            self.formation_position_pub.publish(self.formation_pose)
             self.real_position_pub.publish(self.real_position)
             self.trajectory_pub.publish(self.path)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
@@ -177,20 +194,24 @@ class Follower:
             # else:
             #     self.get_setpoint_motion(0,0,0,1,0,0.5,0,0,0,0,0)
             if self.count == 20:
-                print("local_position\t x:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
-                                        self.local_pose.pose.position.y,\
-                                        self.local_pose.pose.position.z))
-                # print("circular orbit x:%.2f y:%.2f"%(dx,dy))
-                print("initial position x:%.2f y:%.2f"%(self.initial_position.pose.position.x,self.initial_position.pose.position.y))
-                print("real position2 x:%.2f y:%.2f"%(self.real_position.pose.position.x,self.real_position.pose.position.y))
+                # print("local_position\t x:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
+                                        # self.local_pose.pose.position.y,\
+                                        # self.local_pose.pose.position.z))
+                print("circular orbit x:%.2f y:%.2f"%(dx,dy))
+                print("local_position x:%.2f y:%.2f"%(self.local_pose.pose.position.x,self.local_pose.pose.position.y))
+                print("neiborgh info 1 x:%.2f y:%.2f"%((self.uav1_local_pose.pose.position.x),(self.uav1_local_pose.pose.position.y)))
+                print("neiborgh info 2 x:%.2f y:%.2f"%((self.uav1_formation_pose.position.x),(self.uav1_formation_pose.position.y)))
+
+                # print("initial position x:%.2f y:%.2f"%(self.initial_position.pose.position.x,self.initial_position.pose.position.y))
+                # print("real position2 x:%.2f y:%.2f"%(self.real_position.pose.position.x,self.real_position.pose.position.y))
                 # print("local_attitude\t roll:%.2f pitch:%.2f yaw:%.2f"%(self.rpy_pose[2],\
                 #                                                          self.rpy_pose[1],\
                 #                                                          self.rpy_pose[0]))
                 # print("dis to leader%.2f bearing to leader%.2f"%(self.dist,math.degrees(self.bearing)) )
                 # print("dis to leader%.2f"%(self.dist_uav1) )
-                print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose.pose.position.x,\
-                                        self.relative_pose.pose.position.y,\
-                                        self.relative_pose.pose.position.z))
+                # print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose.pose.position.x,\
+                                        # self.relative_pose.pose.position.y,\
+                                        # self.relative_pose.pose.position.z))
                 # print("vel_x:%.2f vel_y:%.2f vel_z:%.2f"%(formation_vel_x,\
                 #                         formation_vel_y,\
                 #                         formation_vel_z))
@@ -216,6 +237,11 @@ class Follower:
             self.formation_id = 2
         elif self.rcin>1600:
             self.formation_id = 3
+    def uav1_formation_pose_callback(self,msg):
+        self.uav1_formation_pose = msg 
+    
+    def uav1_local_pose_callback(self,msg):
+        self.uav1_local_pose = msg
 
     def leader_pose_callback(self,msg):
         self.leader_pose = msg
