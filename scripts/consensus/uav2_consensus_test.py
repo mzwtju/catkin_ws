@@ -58,31 +58,31 @@ class Follower:
         '''
         ros subscribers
         '''
-        # self.timecnt_sub = rospy.Subscriber('/iris_0/timecnt',Int16,self.cnt_callback)
-        self.rcin_sub = rospy.Subscriber('/iris_0/mavros/rc/in', RCIn, self.rcin_callback)
-        self.leader_local_pose_sub = rospy.Subscriber('/iris_0/mavros/local_position/pose', PoseStamped, self.leader_pose_callback)
-        self.leader_global_pose_sub = rospy.Subscriber('/iris_0/mavros/global_position/global', NavSatFix, self.leader_global_pose_callback)
-        self.local_pose_sub = rospy.Subscriber('/iris_'+str(self.followid)+'/mavros/local_position/pose', PoseStamped, self.local_pose_callback)
-        self.global_pose_sub = rospy.Subscriber('/iris_'+str(self.followid)+'/mavros/global_position/global', NavSatFix, self.global_pose_callback)
-        self.global_pose_sub2 = rospy.Subscriber('/iris_1/mavros/global_position/global', NavSatFix, self.global_pose_uav1_callback)
-        self.mavros_sub = rospy.Subscriber('/iris_'+str(self.followid)+'/mavros/state', State, self.mavros_state_callback)
-        self.uav0_state_sub =rospy.Subscriber('/iris_0/state', Int16, self.uav0_state_callback)
-        self.uav1_state_sub =rospy.Subscriber('/iris_1/state', Int16, self.uav1_state_callback)
+        # self.timecnt_sub = rospy.Subscriber('/uav0/timecnt',Int16,self.cnt_callback)
+        self.rcin_sub = rospy.Subscriber('/uav0/mavros/rc/in', RCIn, self.rcin_callback)
+        self.leader_local_pose_sub = rospy.Subscriber('/uav0/mavros/local_position/pose', PoseStamped, self.leader_pose_callback)
+        self.leader_global_pose_sub = rospy.Subscriber('/uav0/mavros/global_position/global', NavSatFix, self.leader_global_pose_callback)
+        self.local_pose_sub = rospy.Subscriber('/uav'+str(self.followid)+'/mavros/local_position/pose', PoseStamped, self.local_pose_callback)
+        self.global_pose_sub = rospy.Subscriber('/uav'+str(self.followid)+'/mavros/global_position/global', NavSatFix, self.global_pose_callback)
+        self.global_pose_sub2 = rospy.Subscriber('/uav1/mavros/global_position/global', NavSatFix, self.global_pose_uav1_callback)
+        self.mavros_sub = rospy.Subscriber('/uav'+str(self.followid)+'/mavros/state', State, self.mavros_state_callback)
+        self.uav0_state_sub =rospy.Subscriber('/uav0/state', Int16, self.uav0_state_callback)
+        self.uav1_state_sub =rospy.Subscriber('/uav1/state', Int16, self.uav1_state_callback)
         '''
         ros publishers
         '''
-        # self.pose_setpoint_pub = rospy.Publisher('/iris_'+str(self.followid)+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        # self.vel_setpoint_pub = rospy.Publisher('/iris_'+str(self.followid)+'/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
-        # self.att_setpoint_pub = rospy.Publisher('/iris_'+str(self.followid)+'/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
-        self.motion_setpoint_pub = rospy.Publisher('/iris_'+str(self.followid)+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-        self.state_pub = rospy.Publisher('/iris_'+str(self.followid)+'/state', Int16, queue_size=10)
-        self.trajectory_pub = rospy.Publisher('/iris_'+str(self.followid)+'/trajectory', Path, queue_size=10)
-        self.real_position_pub = rospy.Publisher('/iris_'+str(self.followid)+'/real_position/pose', PoseStamped, queue_size=10)
+        # self.pose_setpoint_pub = rospy.Publisher('/uav'+str(self.followid)+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+        # self.vel_setpoint_pub = rospy.Publisher('/uav'+str(self.followid)+'/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
+        # self.att_setpoint_pub = rospy.Publisher('/uav'+str(self.followid)+'/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
+        self.motion_setpoint_pub = rospy.Publisher('/uav'+str(self.followid)+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+        self.state_pub = rospy.Publisher('/uav'+str(self.followid)+'/state', Int16, queue_size=10)
+        self.trajectory_pub = rospy.Publisher('/uav'+str(self.followid)+'/trajectory', Path, queue_size=10)
+        self.real_position_pub = rospy.Publisher('/uav'+str(self.followid)+'/real_position/pose', PoseStamped, queue_size=10)
         '''
         ros services
         '''
-        self.armService = rospy.ServiceProxy('/iris_'+str(self.followid)+'/mavros/cmd/arming', CommandBool)
-        self.flightModeService = rospy.ServiceProxy('/iris_'+str(self.followid)+'/mavros/set_mode', SetMode)
+        self.armService = rospy.ServiceProxy('/uav'+str(self.followid)+'/mavros/cmd/arming', CommandBool)
+        self.flightModeService = rospy.ServiceProxy('/uav'+str(self.followid)+'/mavros/set_mode', SetMode)
     
     def start(self):
         rospy.init_node('uav'+str(self.followid)+'_control', anonymous=True)
@@ -149,7 +149,7 @@ class Follower:
                 # formation_vel_x = -w*r*math.sin(w*self.cnt.data*0.05+2.0*math.pi/3)
                 # formation_vel_y = -w*r*math.cos(w*self.cnt.data*0.05+2.0*math.pi/3)
 
-            if self.dist<3:
+            if self.dist<2:
                 avoid_vel_z = (3-self.relative_pose.pose.position.z)*KP_z
                 if avoid_vel_z>1:
                     avoid_vel_z = 1
@@ -275,8 +275,7 @@ class Follower:
     def get_setpoint_motion(self,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
         self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY + PositionTarget.IGNORE_PZ \
-                            + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ \
-                            + PositionTarget.IGNORE_YAW + PositionTarget.IGNORE_YAW_RATE
+                            + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ 
         self.setpoint_motion.position.x = x
         self.setpoint_motion.position.y = y
         self.setpoint_motion.position.z = z

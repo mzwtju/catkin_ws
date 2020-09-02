@@ -39,26 +39,25 @@ class Leader:
         '''
         ros subscribers
         '''
-        self.local_pose_sub = rospy.Subscriber("/iris_0/mavros/local_position/pose", PoseStamped, self.local_pose_callback)
-        self.global_pose_sub = rospy.Subscriber("/iris_0/mavros/global_position/global", NavSatFix, self.global_pose_callback)
-        self.mavros_sub = rospy.Subscriber("/iris_0/mavros/state", State, self.mavros_state_callback)
-        self.uav1_state_sub =rospy.Subscriber('/iris_1/state', Int16, self.uav1_state_callback)
-        self.uav2_state_sub =rospy.Subscriber('/iris_2/state', Int16, self.uav2_state_callback)
+        self.local_pose_sub = rospy.Subscriber("/uav0/mavros/local_position/pose", PoseStamped, self.local_pose_callback)
+        self.global_pose_sub = rospy.Subscriber("/uav0/mavros/global_position/global", NavSatFix, self.global_pose_callback)
+        self.mavros_sub = rospy.Subscriber("/uav0/mavros/state", State, self.mavros_state_callback)
+        self.uav1_state_sub =rospy.Subscriber('/uav1/state', Int16, self.uav1_state_callback)
+        self.uav2_state_sub =rospy.Subscriber('/uav2/state', Int16, self.uav2_state_callback)
         '''
         ros publishers
         '''
-        # self.pose_setpoint_pub = rospy.Publisher('/iris_0/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        # self.vel_setpoint_pub = rospy.Publisher('/iris_0/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
-        # self.att_setpoint_pub = rospy.Publisher('/iris_0/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
-        self.motion_setpoint_pub = rospy.Publisher('/iris_0/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-        self.trajectory_pub = rospy.Publisher('/iris_0/trajectory', Path, queue_size=10)
-        self.timecnt_pub = rospy.Publisher('/iris_0/timecnt',Int16, queue_size=10)
-        self.state_pub = rospy.Publisher('/iris_0/state', Int16, queue_size=10)
+        # self.pose_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+        # self.vel_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
+        # self.att_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
+        self.motion_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+        self.trajectory_pub = rospy.Publisher('/uav0/trajectory', Path, queue_size=10)
+        self.state_pub = rospy.Publisher('/uav0/state', Int16, queue_size=10)
         '''
         ros services
         '''
-        self.armService = rospy.ServiceProxy('/iris_0/mavros/cmd/arming', CommandBool)
-        self.flightModeService = rospy.ServiceProxy('/iris_0/mavros/set_mode', SetMode)
+        self.armService = rospy.ServiceProxy('/uav0/mavros/cmd/arming', CommandBool)
+        self.flightModeService = rospy.ServiceProxy('/uav0/mavros/set_mode', SetMode)
     
     def start(self):
         rospy.init_node('leader_control', anonymous=True)
@@ -136,7 +135,6 @@ class Leader:
                 print("circular center point \tx:%.2f y:%.2f"%(cx,cy))
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
-            self.timecnt_pub.publish(self.cnt)
             self.get_setpoint_motion(self.type,x,y,5.6,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
