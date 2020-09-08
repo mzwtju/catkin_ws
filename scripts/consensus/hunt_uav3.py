@@ -89,13 +89,13 @@ class Leader:
                 self.flight_mode_switch()
             if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and count == 20:
                 self.arm()
-            if self.local_pose.pose.position.z >=5.4 and self.local_pose.pose.position.z <= 6:
+            if self.local_pose.pose.position.z >=2.4 and self.local_pose.pose.position.z <= 3.5:
                     self.state.data = 1
                     self.type = 451 #ignore px py
                     px = 0
                     py = 0    
-                    vx = 0.5
-                    vy = math.sin(w*self.cnt.data*0.05)
+                    vx = 0.35
+                    vy = 0.35*math.sin(w*self.cnt.data*0.05)
                     if time_stop >0:
                         vx = 0
                         vy = 0
@@ -107,12 +107,12 @@ class Leader:
                     self.cnt.data = self.cnt.data + 1
                     z = 0
 
-            elif self.local_pose.pose.position.z >6:
+            elif self.local_pose.pose.position.z >3:
                 vx = 0
                 vy = 0
                 self.cnt.data += 1
                 z = 0
-            elif self.local_pose.pose.position.z <5:
+            elif self.local_pose.pose.position.z <2.4:
                 z = 0.5
                 vx = 0
                 vy = 0
@@ -127,13 +127,13 @@ class Leader:
                 self.uav2_state_sub.unregister()
                 self.state_pub.unregister()
                 print("circular center point \tx:%.2f y:%.2f"%(cx,cy))
-            if self.cnt.data*0.05>T/2 and time_stop == 0:
+            if self.cnt.data*0.05>T and time_stop == 0:
                 self.cnt.data = 0
                 time_stop = 1
                 stop_position_x = self.local_pose.pose.position.x
                 stop_position_y = self.local_pose.pose.position.y
             # self.formation_position_pub.publish(self.formation_pose)
-            self.get_setpoint_motion(self.type,px,py,5.6,vx,vy,0,0,0,0,0,0)
+            self.get_setpoint_motion(self.type,px,py,3,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
                 # now = rospy.get_rostime()

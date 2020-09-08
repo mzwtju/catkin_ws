@@ -130,7 +130,7 @@ class Follower:
             error_y_abs = abs(self.relative_pose.pose.position.y-formation[int(number)-1][1])
             error_z_abs = abs(self.relative_pose.pose.position.z-formation[int(number)-1][2])
 
-            if error_x_abs<0.1 and error_y_abs<0.1 and error_z_abs<0.1:
+            if error_x_abs<0.1 and error_y_abs<0.1 and error_z_abs<0.2:
                 self.state.data = 1
             if self.state_pub.impl is not None:
                 self.state_pub.publish(self.state)
@@ -159,11 +159,11 @@ class Follower:
                 self.cnt.data = self.cnt.data + 1
 
 
-            if self.dist<3:
+            if self.dist<2.5:
                 avoid_vel_z = (3-self.relative_pose.pose.position.z)*KP_z
                 if avoid_vel_z>1:
                     avoid_vel_z = 1
-            elif self.dist>3:
+            elif self.dist>2.5:
                 avoid_vel_z = 0    
             
             self.get_setpoint_motion(0,0,0,formation_vel_x,formation_vel_y,formation_vel_z+avoid_vel_z,0,0,0,0,0)
@@ -176,18 +176,16 @@ class Follower:
             if self.count == 20:
                 time = rospy.get_rostime()
                 # print("local_position\t x:%.2f x2:%.2f "%(self.real_position.pose.position.x,\
-                #                         self.local_pose.pose.position.x))
-                print("circular orbit x:%.2f y:%.2f"%(dx,dy))
-                # print("local_position x:%.2f y:%.2f"%(self.local_pose.pose.position.x,self.local_pose.pose.position.y))
+                #                         self.local_pose.pose.position.x))                # print("local_position x:%.2f y:%.2f"%(self.local_pose.pose.position.x,self.local_pose.pose.position.y))
                 # print("neiborgh info 1 x:%.2f y:%.2f"%((self.leader_pose.pose.position.x),(self.leader_pose.pose.position.y)))
                 # print("neiborgh info 2 x:%.2f y:%.2f"%((self.uav0_formation_pose.position.x),(self.uav0_formation_pose.position.y)))
                 # print("local_attitude\t roll:%.2f pitch:%.2f yaw:%.2f"%(self.rpy_pose[2],\
                 #                                                          self.rpy_pose[1],\
                 #                                                          self.rpy_pose[0]))
                 # print("dis to leader%.2f bearing to leader%.2f"%(self.dist,math.degrees(self.bearing)) )
-                # print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose.pose.position.x,\
-                                        # self.relative_pose.pose.position.y,\
-                                        # self.relative_pose.pose.position.z))
+                print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose.pose.position.x,\
+                                        self.relative_pose.pose.position.y,\
+                                        self.relative_pose.pose.position.z))
                 # print("leader_position\t x:%.7f y:%.7f "%(self.leader_global_pose.latitude,\
                 #                         self.leader_global_pose.longitude))
                 # print("position\t x:%.7f y:%.7f "%(self.global_pose.latitude,\
@@ -195,6 +193,7 @@ class Follower:
                 # print("vel_x:%.2f vel_y:%.2f vel_z:%.2f"%(formation_vel_x,\
                 #         formation_vel_y,\
                 #         formation_vel_z+avoid_vel_z))
+                print(error_x_abs,error_y_abs,error_z_abs)
                 print(self.state.data,self.uav1_state.data,self.uav2_state.data,all_ready)
                 print('\r')
                 self.count = 0
