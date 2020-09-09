@@ -47,9 +47,6 @@ class Leader:
         '''
         ros publishers
         '''
-        # self.pose_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-        # self.vel_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
-        # self.att_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_raw/attitude', AttitudeTarget, queue_size=10)
         self.motion_setpoint_pub = rospy.Publisher('/uav0/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
         self.trajectory_pub = rospy.Publisher('/uav0/trajectory', Path, queue_size=10)
         self.state_pub = rospy.Publisher('/uav0/state', Int16, queue_size=10)
@@ -94,7 +91,7 @@ class Leader:
             # self.pose_setpoint_pub.publish(self.setpoint_pose)
             # self.att_setpoint_pub.publish(self.setpoint_att)
             # self.vel_setpoint_pub.publish(self.setpoint_vel)
-            if self.local_pose.pose.position.z >=5.4 and self.local_pose.pose.position.z <= 6:
+            if self.local_pose.pose.position.z >=1.7 and self.local_pose.pose.position.z <= 2.5:
                     self.state.data = 1
                     if all_ready == 1:
                         self.type = 451
@@ -113,13 +110,14 @@ class Leader:
                         y = 0
                         vx = 0
                         vy = 0
-            elif self.local_pose.pose.position.z >6:
+            elif self.local_pose.pose.position.z >2.5:
                 vx = w*r*math.sin(w*self.cnt.data*0.05)
                 vy = w*r*math.cos(w*self.cnt.data*0.05) 
                 self.cnt.data += 1
                 z = 0
-            elif self.local_pose.pose.position.z <5:
-                z = 0.5
+            elif self.local_pose.pose.position.z <1.7:
+                x = 0
+                y = 0
                 vx = 0
                 vy = 0
             if self.state_pub.impl is not None:
@@ -135,24 +133,21 @@ class Leader:
                 print("circular center point \tx:%.2f y:%.2f"%(cx,cy))
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
-            self.get_setpoint_motion(self.type,x,y,5.6,vx,vy,0,0,0,0,0,0)
+            self.get_setpoint_motion(self.type,x,y,2,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
                 # now = rospy.get_rostime()
-                print("local_position x:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
-                                        self.local_pose.pose.position.y,\
-                                        self.local_pose.pose.position.z))
-                print("circular orbit x:%.2f y:%.2f"%(dx,dy))
+                # print("local_position x:%.2f y:%.2f z:%.2f"%(self.local_pose.pose.position.x,\
+                #                         self.local_pose.pose.position.y,\
+                #                         self.local_pose.pose.position.z))
+                # print("circular orbit x:%.2f y:%.2f"%(dx,dy))
                 # print("local_attitude\t roll:%.2f pitch:%.2f yaw:%.2f\r"%(self.rpy_pose[2],\
                 #                                                          self.rpy_pose[1],\
                 #                                                          self.rpy_pose[0]))
-                print("velocity_vx %.3f velocity_y %.3f"%(vx,vy))   
-                print("\r")                                             
+                # print("velocity_vx %.3f velocity_y %.3f"%(vx,vy))   
+                # print("\r")                                             
                 count = 0
                 # print(self.state.data,self.uav1_state.data,self.uav2_state.data,all_ready)
-            # print("time: %.8f"%(time.nsecs-now.nsecs)*1e-9)
-            # print("time: %.8f"%(time.secs+time.nsecs*1e-9))
-
             rate.sleep()
     def uav1_state_callback(self,msg):
         self.uav1_state = msg
@@ -169,26 +164,6 @@ class Leader:
     def mavros_state_callback(self,msg):
         self.current_state = msg
 
-    def get_setpoint_pose(self):
-        self.setpoint_pose.header = Header()
-        self.setpoint_pose.pose.position.x = 0
-        self.setpoint_pose.pose.position.y = 0
-        self.setpoint_pose.pose.position.z = 2
-
-    def get_setpoint_vel(self,x,y,z):
-        self.setpoint_vel.header = Header()
-        self.setpoint_vel.twist.linear.x = x
-        self.setpoint_vel.twist.linear.y = y
-        self.setpoint_vel.twist.linear.z = z
-    
-    def get_setpoint_att(self):
-        self.setpoint_att.body_rate = Vector3()
-        self.setpoint_att.header = Header()
-        self.setpoint_att.header.frame_id = "base_footprint"
-        self.setpoint_att.orientation = Quaternion(*quaternion_from_euler(0, 0,
-                                                                 0))
-        self.setpoint_att.thrust = 0.6
-        self.setpoint_att.type_mask = 7  # ignore body rate
 
     def get_setpoint_motion(self,type = 0,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED

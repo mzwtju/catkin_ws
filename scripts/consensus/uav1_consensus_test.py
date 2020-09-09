@@ -95,9 +95,9 @@ class Follower:
         self.cnt.data = 0
         self.uav0_state = Int16()
         self.uav2_state = Int16()
-        self.get_setpoint_pose()
-        self.get_setpoint_vel(0,0,0.5)
-        self.get_setpoint_att()
+        # self.get_setpoint_pose()
+        # self.get_setpoint_vel(0,0,0.5)
+        # self.get_setpoint_att()
         self.get_setpoint_motion(0,0,0,0,0,0.5,0,0,0,0,0)
         rate = rospy.Rate(20) # 20hz
         for i in range(100):
@@ -132,7 +132,7 @@ class Follower:
             error_x_abs = abs(self.relative_pose.pose.position.x-formation[int(number)-1][0])
             error_y_abs = abs(self.relative_pose.pose.position.y-formation[int(number)-1][1])
             error_z_abs = abs(self.relative_pose.pose.position.z-formation[int(number)-1][2])
-            if error_x_abs<0.1 and error_y_abs<0.1 and error_z_abs<0.1:
+            if error_x_abs<0.1 and error_y_abs<0.1 and error_z_abs<0.3:
                 self.state.data = 1
             if self.state_pub.impl is not None:
                 self.state_pub.publish(self.state)
@@ -161,7 +161,7 @@ class Follower:
             elif self.dist>3:
                 avoid_vel_z = 0    
             
-            self.get_setpoint_motion(0,0,0,formation_vel_x,formation_vel_y,formation_vel_z+avoid_vel_z,0,0,0,0,0)
+            self.get_setpoint_motion(0,0,2,formation_vel_x,formation_vel_y,avoid_vel_z,0,0,0,0,0)
             # self.pose_setpoint_pub.publish(self.setpoint_pose)
             # self.att_setpoint_pub.publish(self.setpoint_att)
             self.trajectory_pub.publish(self.path)
@@ -170,9 +170,9 @@ class Follower:
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
             if self.count == 20:
-                print("local_position\t x:%.2f x2:%.2f "%(self.real_position.pose.position.x,\
-                                        self.local_pose.pose.position.x))
-                print("circular orbit x:%.2f y:%.2f"%(dx,dy))
+                # print("local_position\t x:%.2f x2:%.2f "%(self.real_position.pose.position.x,\
+                #                         self.local_pose.pose.position.x))
+                # print("circular orbit x:%.2f y:%.2f"%(dx,dy))
                 # print("local_attitude\t roll:%.2f pitch:%.2f yaw:%.2f"%(self.rpy_pose[22
                 # ],\
                 #                                                          self.rpy_pose[1],\
@@ -185,9 +185,9 @@ class Follower:
                 #                         self.leader_global_pose.longitude))
                 # print("position\t x:%.7f y:%.7f "%(self.global_pose.latitude,\
                 #                         self.global_pose.longitude))
-                print("vel_x:%.2f vel_y:%.2f vel_z:%.2f"%(formation_vel_x,\
-                        formation_vel_y,\
-                        formation_vel_z+avoid_vel_z))
+                # print("vel_x:%.2f vel_y:%.2f vel_z:%.2f"%(formation_vel_x,\
+                #         formation_vel_y,\
+                #         formation_vel_z+avoid_vel_z))
                 print(self.uav0_state.data,self.state.data,self.uav2_state.data,all_ready)
                 print('\r')
                 self.count = 0
@@ -231,41 +231,14 @@ class Follower:
             self.real_position.pose.position.y=msg.pose.position.y-self.initial_position.pose.position.y
             self.path.poses.append(self.real_position) 
             self.path.header = self.real_position.header
-        # self.real_position.header = msg.header
-        # self.real_position.pose.position.x = -self.relative_pose.pose.position.x
-        # self.real_position.pose.position.y = -self.relative_pose.pose.position.y
-        # # msg.pose.position.y = msg.pose.position.y+10
-        # # self.real_position = msg
-        # self.path.poses.append(self.real_position) 
-        # self.path.header = msg.header
 
     def mavros_state_callback(self,msg):
         self.current_state = msg
 
-    def get_setpoint_pose(self):
-        self.setpoint_pose.header = Header()
-        self.setpoint_pose.pose.position.x = 0
-        self.setpoint_pose.pose.position.y = 0
-        self.setpoint_pose.pose.position.z = 2
-
-    def get_setpoint_vel(self,x,y,z):
-        self.setpoint_vel.header = Header()
-        self.setpoint_vel.twist.linear.x = x
-        self.setpoint_vel.twist.linear.y = y
-        self.setpoint_vel.twist.linear.z = z
-    
-    def get_setpoint_att(self):
-        self.setpoint_att.body_rate = Vector3()
-        self.setpoint_att.header = Header()
-        self.setpoint_att.header.frame_id = "base_footprint"
-        self.setpoint_att.orientation = Quaternion(*quaternion_from_euler(0, 0,
-                                                                 0))
-        self.setpoint_att.thrust = 0.6
-        self.setpoint_att.type_mask = 7  # ignore body rate
 
     def get_setpoint_motion(self,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
-        self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY + PositionTarget.IGNORE_PZ \
+        self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY  \
                             + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ 
         self.setpoint_motion.position.x = x
         self.setpoint_motion.position.y = y
