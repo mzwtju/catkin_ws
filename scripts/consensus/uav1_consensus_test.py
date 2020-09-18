@@ -113,6 +113,8 @@ class Follower:
                 self.flight_mode_switch()
             if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and self.count == 19:
                 self.arm()
+            self.trajectory_pub.publish(self.path)
+            self.real_position_pub.publish(self.real_position)
             number = 1
             # elif(key == '2'):
             #     number = 2
@@ -160,12 +162,11 @@ class Follower:
                     avoid_vel_z = 1
             elif self.dist>3:
                 avoid_vel_z = 0    
-            
+            formation_vel_x = vel_constrain(formation_vel_x,1.2)
+            formation_vel_y = vel_constrain(formation_vel_y,1.2)
             self.get_setpoint_motion(0,0,2,formation_vel_x,formation_vel_y,avoid_vel_z,0,0,0,0,0)
             # self.pose_setpoint_pub.publish(self.setpoint_pose)
             # self.att_setpoint_pub.publish(self.setpoint_att)
-            self.trajectory_pub.publish(self.path)
-            self.real_position_pub.publish(self.real_position)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
@@ -302,6 +303,13 @@ def delta_vel(target_pos, current_pos, KP, vel_max):
     elif delta_vel<-vel_max:
         delta_vel = -vel_max 
     return delta_vel
+
+def vel_constrain(target,vel_max):
+    if target > vel_max:
+        target = vel_max
+    elif target<-vel_max:
+        target = -vel_max 
+    return target
 
 def getKey():
     tty.setraw(sys.stdin.fileno())

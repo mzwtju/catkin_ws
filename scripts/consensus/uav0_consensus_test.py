@@ -81,9 +81,8 @@ class Leader:
         self.flight_mode = "OFFBOARD"
         #while not rospy.is_shutdown() and self.current_state.connected:
         while not rospy.is_shutdown():
-            time = rospy.get_rostime() 
-            self.trajectory_pub.publish(self.path)
             count=count+1
+            self.trajectory_pub.publish(self.path)
             if self.current_state.mode!="OFFBOARD" and count == 20:
                 self.flight_mode_switch()
             if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and count == 20:
@@ -133,6 +132,8 @@ class Leader:
                 print("circular center point \tx:%.2f y:%.2f"%(cx,cy))
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
+            vx = vel_constrain(vx,1.2)
+            vy = vel_constrain(vy,1.2)
             self.get_setpoint_motion(self.type,x,y,2,vx,vy,0,0,0,0,0,0)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if count == 20:
@@ -198,7 +199,12 @@ class Leader:
         else:
             print(self.flight_mode+"Failed")
             return False
-
+def vel_constrain(target,vel_max):
+    if target > vel_max:
+        target = vel_max
+    elif target<-vel_max:
+        target = -vel_max 
+    return target
 
 if __name__ == '__main__':
     leader = Leader()
