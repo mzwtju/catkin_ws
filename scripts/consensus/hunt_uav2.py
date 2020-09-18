@@ -113,7 +113,8 @@ class Follower:
                 self.flight_mode_switch()
             if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and self.count == 19:
                 self.arm()
-
+            self.real_position_pub.publish(self.real_position)
+            self.trajectory_pub.publish(self.path)
             number = 1       
             formation_p_x = formation[int(number)-1][0]
             formation_p_y = formation[int(number)-1][1]
@@ -126,7 +127,7 @@ class Follower:
             error_x_abs = abs(self.relative_pose.pose.position.x-formation[int(number)-1][0])
             error_y_abs = abs(self.relative_pose.pose.position.y-formation[int(number)-1][1])
             error_z_abs = abs(self.relative_pose.pose.position.z-formation[int(number)-1][2])
-            if error_x_abs<0.1 and error_y_abs<0.1 and error_z_abs<0.2:
+            if error_x_abs<0.1 and error_y_abs<0.1 :
                 self.state.data = 1
 
             if self.state_pub.impl is not None:
@@ -169,10 +170,9 @@ class Follower:
                     avoid_vel_z = 1.5
             elif self.dist>3:
                 avoid_vel_z = 0
-            
+            formation_vel_x = vel_constrain(formation_vel_x,1.2)
+            formation_vel_y = vel_constrain(formation_vel_y,1.2)
             self.get_setpoint_motion(0,0,0,formation_vel_x,formation_vel_y,formation_vel_z+avoid_vel_z,0,0,0,0,0)
-            self.real_position_pub.publish(self.real_position)
-            self.trajectory_pub.publish(self.path)
             self.motion_setpoint_pub.publish(self.setpoint_motion)
             if self.cnt.data*0.05>T :
                 self.cnt.data = 0
@@ -245,6 +245,7 @@ class Follower:
         self.current_state = msg
 
     def get_setpoint_motion(self,x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0):
+        self.setpoint_motion.header.stamp = rospy.Time.now()
         self.setpoint_motion.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
         self.setpoint_motion.type_mask = PositionTarget.IGNORE_PX + PositionTarget.IGNORE_PY + PositionTarget.IGNORE_PZ \
                             + PositionTarget.IGNORE_AFX + PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ \
@@ -311,6 +312,12 @@ def delta_vel(target_pos, current_pos, KP, vel_max):
     elif delta_vel<-vel_max:
         delta_vel = -vel_max 
     return delta_vel
+def vel_constrain(target,vel_max):
+    if target > vel_max:
+        target = vel_max
+    elif target<-vel_max:
+        target = -vel_max 
+    return target
 
 if __name__ == '__main__':
     settings = termios.tcgetattr(sys.stdin)
