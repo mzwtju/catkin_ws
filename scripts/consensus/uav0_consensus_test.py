@@ -83,13 +83,11 @@ class Leader:
         while not rospy.is_shutdown():
             count=count+1
             self.trajectory_pub.publish(self.path)
-            if self.current_state.mode!="OFFBOARD" and count == 20:
-                self.flight_mode_switch()
-            if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and count == 20:
-                self.arm()
-            # self.pose_setpoint_pub.publish(self.setpoint_pose)
-            # self.att_setpoint_pub.publish(self.setpoint_att)
-            # self.vel_setpoint_pub.publish(self.setpoint_vel)
+            # if self.current_state.mode!="OFFBOARD" and count == 20:
+            #     self.flight_mode_switch()
+            # if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and count == 20:
+            #     self.arm()
+
             if self.local_pose.pose.position.z >=1.7 and self.local_pose.pose.position.z <= 2.5:
                     self.state.data = 1
                     if all_ready == 1:
