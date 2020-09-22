@@ -8,6 +8,7 @@ from geometry_msgs.msg import PoseStamped, TwistStamped, Pose, Twist,Vector3,Qua
 from sensor_msgs.msg import Imu, NavSatFix
 from std_msgs.msg import String,Header,Int16
 from nav_msgs.msg import Path
+from geographiclib.geodesic import Geodesic
 import time
 import math
 import tty, termios,sys, select, os
@@ -47,9 +48,12 @@ class Follower:
         self.global_setpoint = None
         self.uav0_formation_pose = Pose()
         # self.formation_config 
-        
+        self.relative_pose2 = PoseStamped()
+        self.geographic = None
         self.dist = 0
         self.bearing = 0
+        self.dist2 = 0
+        self.bearing2 = 0
 
         self.arm_state = False
         self.offboard_state = False
@@ -96,17 +100,17 @@ class Follower:
         rate = rospy.Rate(20) # 20hz
         for i in range(100):
             self.motion_setpoint_pub.publish(self.setpoint_motion)
-            self.initial_position.pose.position.x = self.relative_pose.pose.position.x
-            self.initial_position.pose.position.y = self.relative_pose.pose.position.y
+            self.initial_position.pose.position.x = self.relative_pose2.pose.position.x
+            self.initial_position.pose.position.y = self.relative_pose2.pose.position.y
             rate.sleep()
         self.flight_mode = "OFFBOARD"
         #while not rospy.is_shutdown() and self.current_state.connected:
         while not rospy.is_shutdown():
             self.count = self.count +1
-            if self.current_state.mode!="OFFBOARD" and self.count == 19 :
-                self.flight_mode_switch()
-            if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and self.count == 19:
-                self.arm()
+            # if self.current_state.mode!="OFFBOARD" and self.count == 19 :
+            #     self.flight_mode_switch()
+            # if self.current_state.armed == False and self.current_state.mode == "OFFBOARD" and self.count == 19:
+            #     self.arm()
             self.trajectory_pub.publish(self.path)
             self.real_position_pub.publish(self.real_position)
             number = 1
@@ -115,12 +119,12 @@ class Follower:
             formation_p_y = formation[int(number)-1][1]
             formation_p_z = formation[int(number)-1][2]
 
-            formation_vel_x = delta_vel(formation_p_x,self.relative_pose.pose.position.x,KP_x,vel_max_xy) #target - current 
-            formation_vel_y = delta_vel(formation_p_y,self.relative_pose.pose.position.y,KP_y,vel_max_xy)
+            formation_vel_x = delta_vel(formation_p_x,self.relative_pose2.pose.position.x,KP_x,vel_max_xy) #target - current 
+            formation_vel_y = delta_vel(formation_p_y,self.relative_pose2.pose.position.y,KP_y,vel_max_xy)
             formation_vel_z = delta_vel(formation_p_z,self.relative_pose.pose.position.z,KP_z,vel_max_z)
             
-            error_x_abs = abs(self.relative_pose.pose.position.x-formation[int(number)-1][0])
-            error_y_abs = abs(self.relative_pose.pose.position.y-formation[int(number)-1][1])
+            error_x_abs = abs(self.relative_pose2.pose.position.x-formation[int(number)-1][0])
+            error_y_abs = abs(self.relative_pose2.pose.position.y-formation[int(number)-1][1])
             error_z_abs = abs(self.relative_pose.pose.position.z-formation[int(number)-1][2])
             if error_x_abs<0.1 and error_y_abs<0.1 :
                 self.state.data = 1
@@ -149,11 +153,11 @@ class Follower:
                 self.cnt.data = self.cnt.data + 1
 
 
-            if self.dist<3:
+            if self.dist2<3:
                 avoid_vel_z = (3-self.relative_pose.pose.position.z)*KP_z
                 if avoid_vel_z>1:
                     avoid_vel_z = 1
-            elif self.dist>3:
+            elif self.dist2>3:
                 avoid_vel_z = 0    
             formation_vel_x = vel_constrain(formation_vel_x,1.2)
             formation_vel_y = vel_constrain(formation_vel_y,1.2)
@@ -169,9 +173,12 @@ class Follower:
                 #                                                          self.rpy_pose[1],\
                 #                                                          self.rpy_pose[0]))
                 # print("dis to leader%.2f bearing to leader%.2f"%(self.dist,math.degrees(self.bearing)) )
-                print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose.pose.position.x,\
-                                        self.relative_pose.pose.position.y,\
+                print("relative_local_position\t x:%.2f y:%.2f z:%.2f"%(self.relative_pose2.pose.position.x,\
+                                        self.relative_pose2.pose.position.y,\
                                         self.relative_pose.pose.position.z))
+                # print("relative_local_position_test\t x:%.2f y:%.2f"%(self.relative_pose2.pose.position.x,\
+                #                         self.relative_pose2.pose.position.y\
+                #                         ))
                 # print("leader_position\t x:%.7f y:%.7f "%(self.leader_global_pose.latitude,\
                 #                         self.leader_global_pose.longitude))
                 # print("position\t x:%.7f y:%.7f "%(self.global_pose.latitude,\
@@ -203,6 +210,9 @@ class Follower:
         self.global_pose = msg
         self.dist,self.bearing = haversine([self.global_pose.latitude,self.global_pose.longitude],\
                                             [self.leader_global_pose.latitude,self.leader_global_pose.longitude])
+        self.geographic = Geodesic.WGS84.Inverse(self.leader_global_pose.latitude,self.leader_global_pose.longitude,self.global_pose.latitude,self.global_pose.longitude,)
+        self.dist2 = self.geographic['s12']
+        self.bearing2 = math.radians(self.geographic['azi1'])
     def local_pose_callback(self,msg):
         self.local_pose = msg
         self.calculate_relative_pose()
@@ -261,7 +271,8 @@ class Follower:
         self.relative_pose.pose.position.x = self.dist*math.cos(self.bearing)
         self.relative_pose.pose.position.y = self.dist*math.sin(self.bearing)
         self.relative_pose.pose.position.z = self.local_pose.pose.position.z - self.leader_pose.pose.position.z
-
+        self.relative_pose2.pose.position.x = -self.dist2*math.sin(self.bearing2)
+        self.relative_pose2.pose.position.y = -self.dist2*math.cos(self.bearing2)
 def haversine(coord1, coord2):
     R = 6372800  # Earth radius in meters
     #bearing = from coord1 to coord2 heading
